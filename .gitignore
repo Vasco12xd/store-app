@@ -33,4 +33,4 @@ Thumbs.db
 
 # Coverage
 coverage/
-**/coverage/
+**/coverage/dist/
