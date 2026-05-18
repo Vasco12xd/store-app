@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../../shared/hooks/useAppDispatch';
 import { setStep, resetCheckout } from '../checkoutSlice';
-import { setLoading, setResult } from '../../transaction/transactionSlice';
+import { setResult } from '../../transaction/transactionSlice';
 import { api } from '../../../services/api';
 
 declare const WidgetCheckout: any;

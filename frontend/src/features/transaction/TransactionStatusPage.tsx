@@ -22,13 +22,6 @@ export const TransactionStatusPage = () => {
     navigate('/');
   };
 
-  const formatPrice = (price: number) =>
-    new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-    }).format(price);
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
