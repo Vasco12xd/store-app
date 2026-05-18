@@ -13,6 +13,41 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "ts-node prisma/seed.ts"
   },
+  "jest": {
+    "moduleFileExtensions": [
+      "js",
+      "json",
+      "ts"
+    ],
+    "rootDir": "src",
+    "testRegex": ".*\\.spec\\.ts$",
+    "transform": {
+      "^.+\\.(t|j)s$": [
+        "ts-jest",
+        {
+          "tsconfig": {
+            "verbatimModuleSyntax": false,
+            "strictNullChecks": false,
+            "noImplicitAny": false
+          }
+        }
+      ]
+    },  
+    "transformIgnorePatterns": [
+      "node_modules/(?!(uuid)/)"
+    ],
+    "collectCoverageFrom": [
+      "**/*.(t|j)s",
+      "!**/*.module.ts",
+      "!**/main.ts",
+      "!**/*.dto.ts",
+      "!**/prisma.service.ts",
+      "!**/*.repository.port.ts",
+      "!**/*.prisma.repository.ts"
+    ],
+    "coverageDirectory": "../coverage",
+    "testEnvironment": "node"
+  },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
   },
@@ -28,7 +63,11 @@
     "@nestjs/common": "^11.1.21",
     "@nestjs/core": "^11.1.21",
     "@nestjs/platform-express": "^11.1.21",
+    "@nestjs/testing": "^11.1.21",
+    "@types/jest": "^30.0.0",
     "@types/node": "^25.8.0",
+    "jest": "^30.4.2",
+    "ts-jest": "^29.4.9",
     "ts-node": "^10.9.2"
   }
 }
