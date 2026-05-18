@@ -14,7 +14,7 @@ export const ProductPage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm sticky top-0 z-10">
-        <div className="max-w-lg mx-auto px-4 py-4 flex items-center gap-3">
+        <div className="container-app max-w-lg mx-auto px-4 py-4 flex items-center gap-3">
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
             <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 11H4L5 9z" />
@@ -27,7 +27,7 @@ export const ProductPage = () => {
         </div>
       </header>
 
-      <main className="max-w-lg mx-auto px-4 py-6">
+      <main className="container-app max-w-lg mx-auto px-4 py-6">
         <div className="mb-5">
           <h2 className="text-xl font-bold text-gray-900">Nuestros productos</h2>
           <p className="text-gray-500 text-sm mt-1">Selecciona el producto que deseas comprar</p>
@@ -46,7 +46,7 @@ export const ProductPage = () => {
         )}
 
         {!loading && !error && (
-          <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-2 gap-3">
             {items.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
