@@ -3,6 +3,15 @@ import {PrismaClient}  from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
+
+  const existingProducts = await prisma.product.count();
+  
+  if (existingProducts > 0) {
+    console.log('✅ Productos ya existentes, seed omitido');
+    return;
+  }
+
+  
   await prisma.product.createMany({
     data: [
       {

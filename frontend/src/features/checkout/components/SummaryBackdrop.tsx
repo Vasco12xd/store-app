@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../../shared/hooks/useAppDispatch';
 import { setStep, resetCheckout } from '../checkoutSlice';
-import { setResult } from '../../transaction/transactionSlice';
+import { setLoading, setResult } from '../../transaction/transactionSlice';
 import { api } from '../../../services/api';
 
 declare const WidgetCheckout: any;
@@ -36,26 +36,45 @@ export const SummaryBackdrop = () => {
         setPaying(true);
         try {
             const sigRes = await api.post('/payments/signature', { transactionId });
-            console.log('Signature generated:', sigRes.data);
+            const { reference, amountInCents, signature, publicKey } = sigRes.data;
 
-            // Simulamos el resultado del pago para ambiente de desarrollo
-            const simulatedWompiId = `sim_${Date.now()}`;
-
-            const verifyRes = await api.post(`/payments/${transactionId}/verify`, {
-                wompiTransactionId: simulatedWompiId,
+            const checkout = new WidgetCheckout({
+                currency: 'COP',
+                amountInCents,
+                reference,
+                publicKey,
+                signature: { integrity: signature },
+                redirectUrl: `${window.location.origin}/status`,
             });
 
-            dispatch(setResult({
-                transactionId,
-                wompiTransactionId: simulatedWompiId,
-                status: verifyRes.data.status,
-                deliveryId: verifyRes.data.deliveryId,
-            }));
+            checkout.open(async (result: any) => {
+                const wompiTx = result.transaction;
+                dispatch(setLoading(true));
 
-            dispatch(resetCheckout());
-            navigate('/status');
-        } catch (err) {
-            console.error('Payment error:', err);
+                try {
+                    const verifyRes = await api.post(`/payments/${transactionId}/verify`, {
+                        wompiTransactionId: wompiTx.id,
+                    });
+
+                    dispatch(setResult({
+                        transactionId,
+                        wompiTransactionId: wompiTx.id,
+                        status: verifyRes.data.status,
+                        deliveryId: verifyRes.data.deliveryId,
+                    }));
+
+                    dispatch(resetCheckout());
+                    navigate('/status');
+                } catch {
+                    dispatch(setResult({
+                        transactionId,
+                        wompiTransactionId: wompiTx.id,
+                        status: 'ERROR',
+                    }));
+                    navigate('/status');
+                }
+            });
+        } catch {
             setPaying(false);
         }
     };
