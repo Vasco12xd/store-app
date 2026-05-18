@@ -7,6 +7,15 @@ export default {
         primary: '#6C3AE8',
         'primary-dark': '#5429D4',
       },
+      keyframes: {
+        slideUp: {
+          '0%': { transform: 'translateY(100%)' },
+          '100%': { transform: 'translateY(0)' },
+        },
+      },
+      animation: {
+        slideUp: 'slideUp 0.3s ease-out',
+      },
     },
   },
   plugins: [],
