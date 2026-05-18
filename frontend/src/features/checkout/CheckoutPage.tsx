@@ -5,6 +5,7 @@ import { setCustomer, setTransaction, setStep, CustomerData } from './checkoutSl
 import { CardForm } from './components/CardForm';
 import { DeliveryForm } from './components/DeliveryForm';
 import { api } from '../../services/api';
+import { SummaryBackdrop } from './components/SummaryBackdrop';
 
 const BASE_FEE = 3000;
 const DELIVERY_FEE = 8000;
@@ -121,6 +122,8 @@ export const CheckoutPage = () => {
       minimumFractionDigits: 0,
     }).format(price);
 
+  const step = useAppSelector((s) => s.checkout.step);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm sticky top-0 z-10">
@@ -190,6 +193,9 @@ export const CheckoutPage = () => {
           </button>
         </div>
       </div>
+
+      {step === 'summary' && <SummaryBackdrop />}
+
     </div>
   );
 };
