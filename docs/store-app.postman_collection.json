@@ -1,0 +1,506 @@
+{
+  "info": {
+    "name": "Store App API",
+    "description": "Payment onboarding API collection. Full e-commerce flow: products, customers, transactions, deliveries and payments.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000/api",
+      "type": "string",
+      "description": "Local development URL. Change to https://store-app-develop.up.railway.app/api for production."
+    },
+    {
+      "key": "product_id",
+      "value": "",
+      "type": "string",
+      "description": "Auto-filled after GET /products"
+    },
+    {
+      "key": "customer_id",
+      "value": "",
+      "type": "string",
+      "description": "Auto-filled after POST /customers"
+    },
+    {
+      "key": "transaction_id",
+      "value": "",
+      "type": "string",
+      "description": "Auto-filled after POST /transactions"
+    }
+  ],
+  "item": [
+    {
+      "name": "Products",
+      "description": "Product catalog endpoints",
+      "item": [
+        {
+          "name": "Get all products",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "if (response.length > 0) {",
+                  "  pm.collectionVariables.set('product_id', response[0].id);",
+                  "  console.log('Product ID set:', response[0].id);",
+                  "}",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns array', () => pm.expect(response).to.be.an('array'));",
+                  "pm.test('Products have required fields', () => {",
+                  "  response.forEach(p => {",
+                  "    pm.expect(p).to.have.property('id');",
+                  "    pm.expect(p).to.have.property('name');",
+                  "    pm.expect(p).to.have.property('price');",
+                  "    pm.expect(p).to.have.property('stockQuantity');",
+                  "    pm.expect(p).to.have.property('inStock');",
+                  "  });",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/products",
+              "host": ["{{base_url}}"],
+              "path": ["products"]
+            },
+            "description": "Returns all products with current stock availability. The product_id variable is automatically set for use in subsequent requests."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "status": "OK",
+              "code": 200,
+              "body": "[{\"id\":\"3b104df7-86a4-4f3f-b3b2-f1d6dc85cf61\",\"name\":\"Sony WH-1000XM5\",\"description\":\"Auriculares inalámbricos con cancelación de ruido\",\"price\":350000,\"stockQuantity\":10,\"imageUrl\":\"https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?w=800\",\"inStock\":true}]"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Customers",
+      "description": "Customer management endpoints",
+      "item": [
+        {
+          "name": "Create customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "if (response.id) {",
+                  "  pm.collectionVariables.set('customer_id', response.id);",
+                  "  console.log('Customer ID set:', response.id);",
+                  "}",
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Has customer ID', () => pm.expect(response.id).to.be.a('string'));",
+                  "pm.test('Has required fields', () => {",
+                  "  pm.expect(response).to.have.property('fullName');",
+                  "  pm.expect(response).to.have.property('email');",
+                  "  pm.expect(response).to.have.property('city');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Juan Pérez\",\n  \"email\": \"juan@test.com\",\n  \"phone\": \"3001234567\",\n  \"address\": \"Calle 123 #45-67\",\n  \"city\": \"Bogotá\",\n  \"zipCode\": \"110111\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/customers",
+              "host": ["{{base_url}}"],
+              "path": ["customers"]
+            },
+            "description": "Creates a new customer with delivery information. The customer_id variable is automatically set."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "status": "Created",
+              "code": 201,
+              "body": "{\"id\":\"97734159-fce9-4818-81c3-5498e6f83aea\",\"fullName\":\"Juan Pérez\",\"email\":\"juan@test.com\",\"phone\":\"3001234567\",\"address\":\"Calle 123 #45-67\",\"city\":\"Bogotá\",\"zipCode\":\"110111\"}"
+            },
+            {
+              "name": "Validation Error",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{\"message\":[\"email must be an email\"],\"error\":\"Bad Request\",\"statusCode\":400}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Transactions",
+      "description": "Transaction lifecycle endpoints",
+      "item": [
+        {
+          "name": "Create transaction (PENDING)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "if (response.id) {",
+                  "  pm.collectionVariables.set('transaction_id', response.id);",
+                  "  console.log('Transaction ID set:', response.id);",
+                  "}",
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Status is PENDING', () => pm.expect(response.status).to.equal('PENDING'));",
+                  "pm.test('Has payment reference', () => pm.expect(response.paymentReference).to.match(/^REF-/));",
+                  "pm.test('wompiTransactionId is null', () => pm.expect(response.wompiTransactionId).to.be.null);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{customer_id}}\",\n  \"productId\": \"{{product_id}}\",\n  \"productAmount\": 350000,\n  \"baseFee\": 3000,\n  \"deliveryFee\": 8000,\n  \"totalAmount\": 361000,\n  \"cardLastFour\": \"4242\",\n  \"cardBrand\": \"VISA\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/transactions",
+              "host": ["{{base_url}}"],
+              "path": ["transactions"]
+            },
+            "description": "Creates a transaction in PENDING state. Validates product stock before creation. Automatically generates a unique payment reference."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "status": "Created",
+              "code": 201,
+              "body": "{\"id\":\"f16bb7d5-ceee-4c68-b4fd-0f2d9df9ea72\",\"customerId\":\"97734159-fce9-4818-81c3-5498e6f83aea\",\"productId\":\"3b104df7-86a4-4f3f-b3b2-f1d6dc85cf61\",\"status\":\"PENDING\",\"productAmount\":350000,\"baseFee\":3000,\"deliveryFee\":8000,\"totalAmount\":361000,\"paymentReference\":\"REF-41E30F1A\",\"wompiTransactionId\":null,\"cardLastFour\":\"4242\",\"cardBrand\":\"VISA\",\"createdAt\":\"2026-05-17T18:18:41.774Z\"}"
+            },
+            {
+              "name": "Product not found",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{\"message\":\"Producto no encontrado\",\"error\":\"Bad Request\",\"statusCode\":400}"
+            },
+            {
+              "name": "Out of stock",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{\"message\":\"El producto no tiene stock disponible\",\"error\":\"Bad Request\",\"statusCode\":400}"
+            }
+          ]
+        },
+        {
+          "name": "Update transaction status",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Status updated', () => pm.expect(response.status).to.equal('APPROVED'));",
+                  "pm.test('Has wompiTransactionId', () => pm.expect(response.wompiTransactionId).to.be.a('string'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"APPROVED\",\n  \"wompiTransactionId\": \"15113-1779047882-38858\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/transactions/{{transaction_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["transactions", "{{transaction_id}}"]
+            },
+            "description": "Updates a transaction status. Only PENDING transactions can be updated. Valid statuses: APPROVED, DECLINED, ERROR."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "status": "OK",
+              "code": 200,
+              "body": "{\"id\":\"f16bb7d5-ceee-4c68-b4fd-0f2d9df9ea72\",\"status\":\"APPROVED\",\"wompiTransactionId\":\"15113-1779047882-38858\"}"
+            },
+            {
+              "name": "Not PENDING",
+              "status": "Not Found",
+              "code": 404,
+              "body": "{\"message\":\"Solo se pueden actualizar transacciones en estado PENDING\",\"error\":\"Not Found\",\"statusCode\":404}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Deliveries",
+      "description": "Delivery management endpoints",
+      "item": [
+        {
+          "name": "Create delivery",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Status is ASSIGNED', () => pm.expect(response.status).to.equal('ASSIGNED'));",
+                  "pm.test('Has delivery ID', () => pm.expect(response.id).to.be.a('string'));",
+                  "pm.test('Has transaction reference', () => pm.expect(response.transactionId).to.be.a('string'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/deliveries/{{transaction_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["deliveries", "{{transaction_id}}"]
+            },
+            "description": "Creates a delivery for an APPROVED transaction. Automatically decrements product stock by 1. Fails if transaction is not APPROVED or delivery already exists."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "status": "Created",
+              "code": 201,
+              "body": "{\"id\":\"6eb57d40-2e7b-4d4d-8bc5-4033aa2d0d6a\",\"transactionId\":\"f16bb7d5-ceee-4c68-b4fd-0f2d9df9ea72\",\"customerId\":\"97734159-fce9-4818-81c3-5498e6f83aea\",\"productId\":\"3b104df7-86a4-4f3f-b3b2-f1d6dc85cf61\",\"status\":\"ASSIGNED\",\"address\":\"Calle 123 #45-67\",\"city\":\"Bogotá\",\"zipCode\":\"110111\",\"assignedAt\":\"2026-05-17T18:27:58.344Z\"}"
+            },
+            {
+              "name": "Transaction not approved",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{\"message\":\"Solo se puede crear entrega para transacciones aprobadas\",\"error\":\"Bad Request\",\"statusCode\":400}"
+            },
+            {
+              "name": "Delivery already exists",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{\"message\":\"Ya existe una entrega para esta transacción\",\"error\":\"Bad Request\",\"statusCode\":400}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Payments",
+      "description": "Payment processing endpoints",
+      "item": [
+        {
+          "name": "Generate signature",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Has signature', () => pm.expect(response.signature).to.have.lengthOf(64));",
+                  "pm.test('Has reference', () => pm.expect(response.reference).to.match(/^REF-/));",
+                  "pm.test('Currency is COP', () => pm.expect(response.currency).to.equal('COP'));",
+                  "pm.test('Amount in cents', () => pm.expect(response.amountInCents).to.be.a('number'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transactionId\": \"{{transaction_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/payments/signature",
+              "host": ["{{base_url}}"],
+              "path": ["payments", "signature"]
+            },
+            "description": "Generates a SHA256 integrity signature for the payment gateway. The signature is computed as: SHA256(reference + amountInCents + COP + integrityKey). The integrity key never leaves the backend."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "status": "Created",
+              "code": 201,
+              "body": "{\"reference\":\"REF-BC3C4C75\",\"amountInCents\":36100000,\"currency\":\"COP\",\"signature\":\"6e98a4f657b26fb1e6069d4c3083af96e2064c04b8e31afc249b049087176136\",\"publicKey\":\"pub_stagtest_g2u0HQd3ZMh05hsSgTS2lUV8t3s4mOt7\"}"
+            }
+          ]
+        },
+        {
+          "name": "Verify payment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Has transaction ID', () => pm.expect(response.transactionId).to.be.a('string'));",
+                  "pm.test('Has status', () => pm.expect(['APPROVED','DECLINED','ERROR']).to.include(response.status));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"wompiTransactionId\": \"sim_1234567890\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/payments/{{transaction_id}}/verify",
+              "host": ["{{base_url}}"],
+              "path": ["payments", "{{transaction_id}}", "verify"]
+            },
+            "description": "Verifies the payment result and updates the transaction. If approved, automatically creates a delivery and decrements stock. Use 'sim_' prefix for simulated payments, 'sim_declined' for declined, 'sim_error' for error."
+          },
+          "response": [
+            {
+              "name": "Approved",
+              "status": "Created",
+              "code": 201,
+              "body": "{\"transactionId\":\"f16bb7d5-ceee-4c68-b4fd-0f2d9df9ea72\",\"wompiTransactionId\":\"sim_1234567890\",\"status\":\"APPROVED\",\"deliveryId\":\"6eb57d40-2e7b-4d4d-8bc5-4033aa2d0d6a\"}"
+            },
+            {
+              "name": "Declined",
+              "status": "Created",
+              "code": 201,
+              "body": "{\"transactionId\":\"f16bb7d5-ceee-4c68-b4fd-0f2d9df9ea72\",\"wompiTransactionId\":\"sim_declined\",\"status\":\"DECLINED\"}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "🔄 Full Flow",
+      "description": "Run these requests in order to test the complete payment flow",
+      "item": [
+        {
+          "name": "1. Get products",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/products",
+              "host": ["{{base_url}}"],
+              "path": ["products"]
+            }
+          }
+        },
+        {
+          "name": "2. Create customer",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Juan Pérez\",\n  \"email\": \"juan@test.com\",\n  \"phone\": \"3001234567\",\n  \"address\": \"Calle 123 #45-67\",\n  \"city\": \"Bogotá\",\n  \"zipCode\": \"110111\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/customers",
+              "host": ["{{base_url}}"],
+              "path": ["customers"]
+            }
+          }
+        },
+        {
+          "name": "3. Create transaction",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{customer_id}}\",\n  \"productId\": \"{{product_id}}\",\n  \"productAmount\": 350000,\n  \"baseFee\": 3000,\n  \"deliveryFee\": 8000,\n  \"totalAmount\": 361000,\n  \"cardLastFour\": \"4242\",\n  \"cardBrand\": \"VISA\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/transactions",
+              "host": ["{{base_url}}"],
+              "path": ["transactions"]
+            }
+          }
+        },
+        {
+          "name": "4. Generate signature",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transactionId\": \"{{transaction_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/payments/signature",
+              "host": ["{{base_url}}"],
+              "path": ["payments", "signature"]
+            }
+          }
+        },
+        {
+          "name": "5. Verify payment (approved)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"wompiTransactionId\": \"sim_1234567890\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/payments/{{transaction_id}}/verify",
+              "host": ["{{base_url}}"],
+              "path": ["payments", "{{transaction_id}}", "verify"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

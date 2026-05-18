@@ -32,7 +32,7 @@ export const ProductCard = ({ product }: Props) => {
           <img
             src={product.imageUrl}
             alt={product.name}
-            className="w-full h-48 object-cover"
+            className="w-full h-36 object-cover"
           />
         )}
         <div className="absolute top-3 right-3">
