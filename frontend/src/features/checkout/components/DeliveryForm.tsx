@@ -1,4 +1,5 @@
-import { CustomerData } from '../checkoutSlice';
+import { useState } from 'react';
+import type { CustomerData } from '../checkoutSlice';
 
 interface Props {
   data: CustomerData;
@@ -6,8 +7,49 @@ interface Props {
   errors: Partial<CustomerData>;
 }
 
+const validators: Record<keyof CustomerData, (v: string) => string> = {
+  fullName: (v) => !v.trim() ? 'El nombre es requerido' : v.trim().length < 3 ? 'Mínimo 3 caracteres' : '',
+  email: (v) => !v.trim() ? 'El email es requerido' : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? 'Email inválido' : '',
+  phone: (v) => !v.trim() ? 'El teléfono es requerido' : !/^\+?[\d\s\-]{7,15}$/.test(v) ? 'Teléfono inválido' : '',
+  address: (v) => !v.trim() ? 'La dirección es requerida' : '',
+  city: (v) => !v.trim() ? 'La ciudad es requerida' : '',
+  zipCode: (v) => !v.trim() ? 'El código postal es requerido' : v.length < 4 ? 'Mínimo 4 caracteres' : '',
+};
+
 export const DeliveryForm = ({ data, onChange, errors }: Props) => {
-    if (!data) return null;
+  const [touched, setTouched] = useState<Partial<Record<keyof CustomerData, boolean>>>({});
+
+  if (!data) return null;
+
+  const handleBlur = (field: keyof CustomerData) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+  };
+
+  const getError = (field: keyof CustomerData) => {
+    if (!touched[field]) return '';
+    return errors[field] || validators[field](data[field]) || '';
+  };
+
+  const inputClass = (field: keyof CustomerData) => {
+    const error = getError(field);
+    const isValid = touched[field] && !error;
+    return `w-full border rounded-xl px-4 py-3 text-gray-900 text-sm outline-none transition
+      ${error
+        ? 'border-red-400 bg-red-50 focus:border-red-400'
+        : isValid
+          ? 'border-green-400 bg-green-50 focus:border-green-400'
+          : 'border-gray-200 focus:border-primary'}`;
+  };
+
+  const fields: { field: keyof CustomerData; label: string; placeholder: string; type: string }[] = [
+    { field: 'fullName', label: 'NOMBRE COMPLETO', placeholder: 'Juan Pérez', type: 'text' },
+    { field: 'email', label: 'CORREO ELECTRÓNICO', placeholder: 'juan@email.com', type: 'email' },
+    { field: 'phone', label: 'TELÉFONO', placeholder: '3001234567', type: 'tel' },
+    { field: 'address', label: 'DIRECCIÓN', placeholder: 'Calle 123 #45-67', type: 'text' },
+    { field: 'city', label: 'CIUDAD', placeholder: 'Bogotá', type: 'text' },
+    { field: 'zipCode', label: 'CÓDIGO POSTAL', placeholder: '110111', type: 'text' },
+  ];
+
   return (
     <div className="bg-white rounded-2xl p-4 shadow-sm">
       <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
@@ -18,28 +60,21 @@ export const DeliveryForm = ({ data, onChange, errors }: Props) => {
         Datos de entrega
       </h3>
 
-      {[
-        { field: 'fullName', label: 'NOMBRE COMPLETO', placeholder: 'Juan Pérez', type: 'text' },
-        { field: 'email', label: 'CORREO ELECTRÓNICO', placeholder: 'juan@email.com', type: 'email' },
-        { field: 'phone', label: 'TELÉFONO', placeholder: '3001234567', type: 'tel' },
-        { field: 'address', label: 'DIRECCIÓN', placeholder: 'Calle 123 #45-67', type: 'text' },
-        { field: 'city', label: 'CIUDAD', placeholder: 'Bogotá', type: 'text' },
-        { field: 'zipCode', label: 'CÓDIGO POSTAL', placeholder: '110111', type: 'text' },
-      ].map(({ field, label, placeholder, type }) => (
+      {fields.map(({ field, label, placeholder, type }) => (
         <div key={field} className="mb-3">
           <label className="text-xs font-semibold text-gray-500 mb-1 block">{label}</label>
           <input
             type={type}
-            value={data[field as keyof CustomerData]}
-            onChange={(e) => onChange(field as keyof CustomerData, e.target.value)}
+            value={data[field]}
+            onChange={(e) => onChange(field, e.target.value)}
+            onBlur={() => handleBlur(field)}
             placeholder={placeholder}
-            className={`w-full border rounded-xl px-4 py-3 text-gray-900 text-sm outline-none transition
-              ${errors[field as keyof CustomerData]
-                ? 'border-red-400 bg-red-50'
-                : 'border-gray-200 focus:border-primary'}`}
+            className={inputClass(field)}
           />
-          {errors[field as keyof CustomerData] && (
-            <p className="text-red-500 text-xs mt-1">{errors[field as keyof CustomerData]}</p>
+          {getError(field) && (
+            <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+              {getError(field)}
+            </p>
           )}
         </div>
       ))}

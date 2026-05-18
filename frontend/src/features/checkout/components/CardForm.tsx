@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useAppDispatch, useAppSelector } from '../../../shared/hooks/useAppDispatch';
+import { useState } from 'react';
+import { useAppDispatch } from '../../../shared/hooks/useAppDispatch';
 import { setCardData, CardData } from '../checkoutSlice';
 import {
   detectCardBrand,
@@ -11,44 +11,105 @@ import {
 
 export const CardForm = () => {
   const dispatch = useAppDispatch();
-  const saved = useAppSelector((state) => state.checkout.cardData);
 
-  const [number, setNumber] = useState(saved?.number ? formatCardNumber(saved.number) : '');
-  const [cardHolder, setCardHolder] = useState(saved?.cardHolder || '');
-  const [expiry, setExpiry] = useState(
-    saved?.expMonth && saved?.expYear ? `${saved.expMonth}/${saved.expYear}` : ''
-  );
-  const [cvc, setCvc] = useState(saved?.cvc || '');
+  const [number, setNumber] = useState('');
+  const [cardHolder, setCardHolder] = useState('');
+  const [expiry, setExpiry] = useState('');
+  const [cvc, setCvc] = useState('');
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const brand = detectCardBrand(number);
 
-  useEffect(() => {
-    const clean = number.replace(/\s/g, '');
-    const [expMonth, expYear] = expiry.split('/');
-    if (clean && cardHolder && expiry && cvc) {
+  const validateField = (field: string, value: string) => {
+    let error = '';
+    switch (field) {
+      case 'number':
+        if (!value.trim()) error = 'El número de tarjeta es requerido';
+        else if (!validateCardNumber(value)) error = 'Número de tarjeta inválido';
+        break;
+      case 'cardHolder':
+        if (!value.trim()) error = 'El nombre del titular es requerido';
+        else if (value.trim().length < 5) error = 'Mínimo 5 caracteres';
+        break;
+      case 'expiry':
+        if (!value.trim()) error = 'La fecha de vencimiento es requerida';
+        else if (!validateExpiry(value)) error = 'Fecha inválida o expirada';
+        break;
+      case 'cvc':
+        if (!value.trim()) error = 'El CVC es requerido';
+        else if (value.length < 3) error = 'CVC debe tener mínimo 3 dígitos';
+        break;
+    }
+    return error;
+  };
+
+  const handleBlur = (field: string, value: string) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    const error = validateField(field, value);
+    setErrors((prev) => ({ ...prev, [field]: error }));
+  };
+
+  const handleNumberChange = (val: string) => {
+    const formatted = formatCardNumber(val);
+    setNumber(formatted);
+    if (touched.number) {
+      setErrors((prev) => ({ ...prev, number: validateField('number', formatted) }));
+    }
+    updateStore(formatted, cardHolder, expiry, cvc);
+  };
+
+  const handleCardHolderChange = (val: string) => {
+    const upper = val.toUpperCase();
+    setCardHolder(upper);
+    if (touched.cardHolder) {
+      setErrors((prev) => ({ ...prev, cardHolder: validateField('cardHolder', upper) }));
+    }
+    updateStore(number, upper, expiry, cvc);
+  };
+
+  const handleExpiryChange = (val: string) => {
+    const formatted = formatExpiry(val);
+    setExpiry(formatted);
+    if (touched.expiry) {
+      setErrors((prev) => ({ ...prev, expiry: validateField('expiry', formatted) }));
+    }
+    updateStore(number, cardHolder, formatted, cvc);
+  };
+
+  const handleCvcChange = (val: string) => {
+    const clean = val.replace(/\D/g, '').slice(0, 4);
+    setCvc(clean);
+    if (touched.cvc) {
+      setErrors((prev) => ({ ...prev, cvc: validateField('cvc', clean) }));
+    }
+    updateStore(number, cardHolder, expiry, clean);
+  };
+
+  const updateStore = (num: string, holder: string, exp: string, cv: string) => {
+    const clean = num.replace(/\s/g, '');
+    const [expMonth, expYear] = exp.split('/');
+    if (clean.length === 16 && holder.length >= 5 && exp.length === 5 && cv.length >= 3) {
       const data: CardData = {
         number: clean,
-        cardHolder,
+        cardHolder: holder,
         expMonth: expMonth || '',
         expYear: expYear || '',
-        cvc,
-        brand,
+        cvc: cv,
+        brand: detectCardBrand(clean),
         lastFour: clean.slice(-4),
       };
       dispatch(setCardData(data));
     }
-  }, [number, cardHolder, expiry, cvc]);
-
-  const validate = () => {
-    const newErrors: Record<string, string> = {};
-    if (!validateCardNumber(number)) newErrors.number = 'Número de tarjeta inválido';
-    if (!cardHolder.trim() || cardHolder.length < 5) newErrors.cardHolder = 'Ingresa el nombre del titular';
-    if (!validateExpiry(expiry)) newErrors.expiry = 'Fecha de expiración inválida';
-    if (cvc.length < 3) newErrors.cvc = 'CVC inválido';
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
   };
+
+  const inputClass = (field: string) =>
+    `w-full border rounded-xl px-4 py-3 text-gray-900 text-sm outline-none transition
+    ${touched[field] && errors[field]
+      ? 'border-red-400 bg-red-50 focus:border-red-400'
+      : touched[field] && !errors[field]
+        ? 'border-green-400 bg-green-50 focus:border-green-400'
+        : 'border-gray-200 focus:border-primary'}`;
 
   return (
     <div className="bg-white rounded-2xl p-4 shadow-sm">
@@ -60,18 +121,16 @@ export const CardForm = () => {
       </h3>
 
       <div className="mb-3">
-        <label className="text-xs font-semibold text-gray-500 mb-1 block">
-          NÚMERO DE TARJETA
-        </label>
+        <label className="text-xs font-semibold text-gray-500 mb-1 block">NÚMERO DE TARJETA</label>
         <div className="relative">
           <input
             type="text"
             inputMode="numeric"
             value={number}
-            onChange={(e) => setNumber(formatCardNumber(e.target.value))}
+            onChange={(e) => handleNumberChange(e.target.value)}
+            onBlur={() => handleBlur('number', number)}
             placeholder="0000 0000 0000 0000"
-            className={`w-full border rounded-xl px-4 py-3 pr-16 text-gray-900 text-sm outline-none transition
-              ${errors.number ? 'border-red-400 bg-red-50' : 'border-gray-200 focus:border-primary'}`}
+            className={inputClass('number') + ' pr-16'}
           />
           <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
             {brand === 'VISA' && (
@@ -85,55 +144,65 @@ export const CardForm = () => {
             )}
           </div>
         </div>
-        {errors.number && <p className="text-red-500 text-xs mt-1">{errors.number}</p>}
+        {touched.number && errors.number && (
+          <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+            {errors.number}
+          </p>
+        )}
       </div>
 
       <div className="mb-3">
-        <label className="text-xs font-semibold text-gray-500 mb-1 block">
-          NOMBRE DEL TITULAR
-        </label>
+        <label className="text-xs font-semibold text-gray-500 mb-1 block">NOMBRE DEL TITULAR</label>
         <input
           type="text"
           value={cardHolder}
-          onChange={(e) => setCardHolder(e.target.value.toUpperCase())}
+          onChange={(e) => handleCardHolderChange(e.target.value)}
+          onBlur={() => handleBlur('cardHolder', cardHolder)}
           placeholder="NOMBRE APELLIDO"
-          className={`w-full border rounded-xl px-4 py-3 text-gray-900 text-sm outline-none transition uppercase
-            ${errors.cardHolder ? 'border-red-400 bg-red-50' : 'border-gray-200 focus:border-primary'}`}
+          className={inputClass('cardHolder')}
         />
-        {errors.cardHolder && <p className="text-red-500 text-xs mt-1">{errors.cardHolder}</p>}
+        {touched.cardHolder && errors.cardHolder && (
+          <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+            {errors.cardHolder}
+          </p>
+        )}
       </div>
 
       <div className="flex gap-3">
         <div className="flex-1">
-          <label className="text-xs font-semibold text-gray-500 mb-1 block">
-            VENCIMIENTO
-          </label>
+          <label className="text-xs font-semibold text-gray-500 mb-1 block">VENCIMIENTO</label>
           <input
             type="text"
             inputMode="numeric"
             value={expiry}
-            onChange={(e) => setExpiry(formatExpiry(e.target.value))}
+            onChange={(e) => handleExpiryChange(e.target.value)}
+            onBlur={() => handleBlur('expiry', expiry)}
             placeholder="MM/AA"
-            className={`w-full border rounded-xl px-4 py-3 text-gray-900 text-sm outline-none transition
-              ${errors.expiry ? 'border-red-400 bg-red-50' : 'border-gray-200 focus:border-primary'}`}
+            className={inputClass('expiry')}
           />
-          {errors.expiry && <p className="text-red-500 text-xs mt-1">{errors.expiry}</p>}
+          {touched.expiry && errors.expiry && (
+            <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+              {errors.expiry}
+            </p>
+          )}
         </div>
 
         <div className="flex-1">
-          <label className="text-xs font-semibold text-gray-500 mb-1 block">
-            CVC
-          </label>
+          <label className="text-xs font-semibold text-gray-500 mb-1 block">CVC</label>
           <input
             type="text"
             inputMode="numeric"
             value={cvc}
-            onChange={(e) => setCvc(e.target.value.replace(/\D/g, '').slice(0, 4))}
+            onChange={(e) => handleCvcChange(e.target.value)}
+            onBlur={() => handleBlur('cvc', cvc)}
             placeholder="123"
-            className={`w-full border rounded-xl px-4 py-3 text-gray-900 text-sm outline-none transition
-              ${errors.cvc ? 'border-red-400 bg-red-50' : 'border-gray-200 focus:border-primary'}`}
+            className={inputClass('cvc')}
           />
-          {errors.cvc && <p className="text-red-500 text-xs mt-1">{errors.cvc}</p>}
+          {touched.cvc && errors.cvc && (
+            <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+              {errors.cvc}
+            </p>
+          )}
         </div>
       </div>
     </div>

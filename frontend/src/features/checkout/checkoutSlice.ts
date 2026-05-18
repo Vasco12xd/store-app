@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { Product } from '../product/productSlice';
 
 export type CheckoutStep = 'product' | 'form' | 'summary' | 'status';
 
@@ -27,6 +28,7 @@ export interface CheckoutState {
   transactionId: string | null;
   customerData: CustomerData | null;
   cardData: CardData | null;
+  selectedProduct: Product | null;
   fees: {
     productAmount: number;
     baseFee: number;
@@ -52,6 +54,7 @@ const initialState: CheckoutState = {
   transactionId: null,
   customerData: null,
   cardData: null,
+  selectedProduct: null,
   fees: null,
   ...loadFromStorage(),
 };
@@ -78,6 +81,10 @@ const checkoutSlice = createSlice({
       state.fees = action.payload.fees;
       saveToStorage(state);
     },
+    setSelectedProduct(state, action: PayloadAction<Product>) {
+      state.selectedProduct = action.payload;
+      saveToStorage(state);
+    },
     resetCheckout(state) {
       state.step = 'product';
       state.customerId = null;
@@ -97,11 +104,12 @@ const saveToStorage = (state: CheckoutState) => {
       customerId: state.customerId,
       transactionId: state.transactionId,
       customerData: state.customerData,
+      selectedProduct: state.selectedProduct,
       fees: state.fees,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
   } catch {}
 };
 
-export const { setStep, setCustomer, setCardData, setTransaction, resetCheckout } = checkoutSlice.actions;
+export const { setStep, setCustomer, setCardData, setTransaction, setSelectedProduct, resetCheckout } = checkoutSlice.actions;
 export default checkoutSlice.reducer;

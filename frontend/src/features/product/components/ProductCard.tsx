@@ -1,7 +1,7 @@
 import { Product, selectProduct } from '../productSlice';
 import { useAppDispatch } from '../../../shared/hooks/useAppDispatch';
 import { useNavigate } from 'react-router-dom';
-import { setStep } from '../../checkout/checkoutSlice';
+import { setStep, setSelectedProduct } from '../../checkout/checkoutSlice';
 
 interface Props {
   product: Product;
@@ -13,6 +13,7 @@ export const ProductCard = ({ product }: Props) => {
 
   const handleBuy = () => {
     dispatch(selectProduct(product));
+    dispatch(setSelectedProduct(product));
     dispatch(setStep('form'));
     navigate('/checkout');
   };
