@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../shared/hooks/useAppDispatch';
-import { setCustomer, setTransaction, setStep, CustomerData } from './checkoutSlice';
+import { setCustomer, setTransaction, setStep, setSelectedProduct } from './checkoutSlice';
 import { CardForm } from './components/CardForm';
 import { DeliveryForm } from './components/DeliveryForm';
-import { api } from '../../services/api';
 import { SummaryBackdrop } from './components/SummaryBackdrop';
+import { api } from '../../services/api';
+import type { CustomerData } from './checkoutSlice';
 
 const BASE_FEE = 3000;
 const DELIVERY_FEE = 8000;
@@ -13,30 +14,38 @@ const DELIVERY_FEE = 8000;
 export const CheckoutPage = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { selected } = useAppSelector((state) => state.products);
-  const { cardData } = useAppSelector((state) => state.checkout);
 
-  const savedCustomer = useAppSelector((state) => state.checkout.customerData);
+  const { selected } = useAppSelector((s) => s.products);
+  const { selectedProduct, cardData, transactionId, customerData, step } = useAppSelector((s) => s.checkout);
+
+  const currentProduct = selected || selectedProduct;
 
   const [deliveryData, setDeliveryData] = useState<CustomerData>({
-    fullName: savedCustomer?.fullName || '',
-    email: savedCustomer?.email || '',
-    phone: savedCustomer?.phone || '',
-    address: savedCustomer?.address || '',
-    city: savedCustomer?.city || '',
-    zipCode: savedCustomer?.zipCode || '',
+    fullName: customerData?.fullName || '',
+    email: customerData?.email || '',
+    phone: customerData?.phone || '',
+    address: customerData?.address || '',
+    city: customerData?.city || '',
+    zipCode: customerData?.zipCode || '',
   });
 
   const [deliveryErrors, setDeliveryErrors] = useState<Partial<CustomerData>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  if (!selected) {
+  if (!currentProduct) {
     navigate('/');
     return null;
   }
 
-  const totalAmount = selected.price + BASE_FEE + DELIVERY_FEE;
+  const totalAmount = currentProduct.price + BASE_FEE + DELIVERY_FEE;
+
+  const formatPrice = (price: number) =>
+    new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+      minimumFractionDigits: 0,
+    }).format(price);
 
   const handleDeliveryChange = (field: keyof CustomerData, value: string) => {
     setDeliveryData((prev) => ({ ...prev, [field]: value }));
@@ -58,24 +67,20 @@ export const CheckoutPage = () => {
   };
 
   const handleContinue = async () => {
-    console.log('handleContinue called');
-  console.log('cardData:', cardData);
-  console.log('deliveryData:', deliveryData);
     if (!cardData) {
-      console.log('cardData is null - blocking');
       setError('Por favor completa los datos de la tarjeta');
       return;
     }
 
-    const isValid = validateDelivery();
-  console.log('validateDelivery result:', isValid);
+    if (transactionId) {
+      dispatch(setStep('summary'));
+      return;
+    }
 
-  if (!isValid) {
-    setError('Por favor corrige los errores en el formulario');
-    return;
-  }
-
-  console.log('Calling APIs...');
+    if (!validateDelivery()) {
+      setError('Por favor corrige los errores en el formulario');
+      return;
+    }
 
     setLoading(true);
     setError('');
@@ -83,13 +88,12 @@ export const CheckoutPage = () => {
     try {
       const customerRes = await api.post('/customers', deliveryData);
       const customerId = customerRes.data.id;
-
       dispatch(setCustomer({ id: customerId, data: deliveryData }));
 
       const txRes = await api.post('/transactions', {
         customerId,
-        productId: selected.id,
-        productAmount: selected.price,
+        productId: currentProduct.id,
+        productAmount: currentProduct.price,
         baseFee: BASE_FEE,
         deliveryFee: DELIVERY_FEE,
         totalAmount,
@@ -100,13 +104,14 @@ export const CheckoutPage = () => {
       dispatch(setTransaction({
         id: txRes.data.id,
         fees: {
-          productAmount: selected.price,
+          productAmount: currentProduct.price,
           baseFee: BASE_FEE,
           deliveryFee: DELIVERY_FEE,
           totalAmount,
         },
       }));
 
+      dispatch(setSelectedProduct(currentProduct));
       dispatch(setStep('summary'));
     } catch (err) {
       setError('Error al procesar. Intenta de nuevo.');
@@ -114,15 +119,6 @@ export const CheckoutPage = () => {
       setLoading(false);
     }
   };
-
-  const formatPrice = (price: number) =>
-    new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-    }).format(price);
-
-  const step = useAppSelector((s) => s.checkout.step);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -142,12 +138,12 @@ export const CheckoutPage = () => {
 
       <main className="max-w-lg mx-auto px-4 py-4 pb-32">
         <div className="bg-primary/5 border border-primary/20 rounded-2xl p-3 mb-4 flex items-center gap-3">
-          {selected.imageUrl && (
-            <img src={selected.imageUrl} alt={selected.name} className="w-14 h-14 rounded-xl object-cover" />
+          {currentProduct.imageUrl && (
+            <img src={currentProduct.imageUrl} alt={currentProduct.name} className="w-14 h-14 rounded-xl object-cover" />
           )}
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-gray-900 text-sm truncate">{selected.name}</p>
-            <p className="text-primary font-bold">{formatPrice(selected.price)}</p>
+            <p className="font-semibold text-gray-900 text-sm truncate">{currentProduct.name}</p>
+            <p className="text-primary font-bold">{formatPrice(currentProduct.price)}</p>
           </div>
         </div>
 
@@ -195,7 +191,6 @@ export const CheckoutPage = () => {
       </div>
 
       {step === 'summary' && <SummaryBackdrop />}
-
     </div>
   );
 };
