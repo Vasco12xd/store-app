@@ -9,6 +9,7 @@ export interface SignatureResult {
   currency: string;
   signature: string;
   publicKey: string;
+  vatAmount?: number;
 }
 
 @Injectable()
@@ -32,7 +33,7 @@ export class GenerateSignatureUseCase {
         reference: transaction.paymentReference,
         amountInCents,
         currency: 'COP',
-        signature,
+        signature,        
         publicKey: process.env.WOMPI_PUBLIC_KEY || '',
       });
     } catch (error) {

@@ -10,6 +10,7 @@ export interface CreateTransactionData {
   paymentReference: string;
   cardLastFour: string;
   cardBrand: string;
+  vatAmount?: number;
 }
 
 export interface UpdateTransactionData {
