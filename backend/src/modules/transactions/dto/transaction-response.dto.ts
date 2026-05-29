@@ -14,6 +14,7 @@ export class TransactionResponseDto {
   cardLastFour: string;
   cardBrand: string;
   createdAt: Date;
+  vatAmount: number;
 
   static fromEntity(transaction: Transaction): TransactionResponseDto {
     const dto = new TransactionResponseDto();
@@ -30,6 +31,7 @@ export class TransactionResponseDto {
     dto.cardLastFour = transaction.cardLastFour;
     dto.cardBrand = transaction.cardBrand;
     dto.createdAt = transaction.createdAt;
+    dto.vatAmount = Math.round(transaction.productAmount * 0.19);
     return dto;
   }
 }

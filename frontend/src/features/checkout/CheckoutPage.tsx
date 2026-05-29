@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../shared/hooks/useAppDispatch';
-import { setCustomer, setTransaction, setStep, setSelectedProduct } from './checkoutSlice';
+import { setCustomer, setTransaction, setStep, setSelectedProduct, setVatAmount } from './checkoutSlice';
 import { CardForm } from './components/CardForm';
 import { DeliveryForm } from './components/DeliveryForm';
 import { SummaryBackdrop } from './components/SummaryBackdrop';
@@ -38,7 +38,8 @@ export const CheckoutPage = () => {
     return null;
   }
 
-  const totalAmount = currentProduct.price + BASE_FEE + DELIVERY_FEE;
+  const vatAmount = Math.round(currentProduct.price * 0.19);
+  const totalAmount = currentProduct.price + BASE_FEE + DELIVERY_FEE + vatAmount;
 
   const formatPrice = (price: number) =>
     new Intl.NumberFormat('es-CO', {
@@ -66,24 +67,43 @@ export const CheckoutPage = () => {
     return Object.keys(errors).length === 0;
   };
 
+  
+
   const handleContinue = async () => {
-    if (!cardData) {
-      setError('Por favor completa los datos de la tarjeta');
-      return;
-    }
+    console.log('handleContinue ejecutado');
+  console.log('cardData:', cardData);
+  console.log('transactionId:', transactionId);
 
-    if (transactionId) {
-      dispatch(setStep('summary'));
-      return;
-    }
+  if (!cardData) {
+    console.log('Saliendo por cardData null');
+    setError('Por favor completa los datos de la tarjeta');
+    return;
+  }
 
-    if (!validateDelivery()) {
-      setError('Por favor corrige los errores en el formulario');
-      return;
-    }
+  if (transactionId) {
+  console.log('Saliendo por transactionId existente:', transactionId);
+  dispatch(setStep('summary'));
+  return;
+}
+
+console.log('Validando delivery...'); // ← agrega aquí
+
+if (!validateDelivery()) {
+  setError('Por favor corrige los errores en el formulario');
+  return;
+}
+
+console.log('Pasó validación — llamando API');
 
     setLoading(true);
     setError('');
+
+    console.log('Procesando transacción con datos:', {
+      deliveryData,
+      cardData,
+      currentProduct,
+      totalAmount,
+    });
 
     try {
       const customerRes = await api.post('/customers', deliveryData);
@@ -101,6 +121,8 @@ export const CheckoutPage = () => {
         cardBrand: cardData.brand || 'VISA',
       });
 
+      console.log('Response transacción:', txRes.data);
+
       dispatch(setTransaction({
         id: txRes.data.id,
         fees: {
@@ -112,6 +134,7 @@ export const CheckoutPage = () => {
       }));
 
       dispatch(setSelectedProduct(currentProduct));
+      dispatch(setVatAmount(txRes.data.vatAmount));
       dispatch(setStep('summary'));
     } catch (err) {
       setError('Error al procesar. Intenta de nuevo.');
@@ -119,6 +142,8 @@ export const CheckoutPage = () => {
       setLoading(false);
     }
   };
+
+  
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -165,9 +190,19 @@ export const CheckoutPage = () => {
 
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4">
         <div className="max-w-lg mx-auto">
-          <div className="flex justify-between text-sm text-gray-500 mb-3">
-            <span>Total a pagar</span>
-            <span className="font-bold text-gray-900">{formatPrice(totalAmount)}</span>
+          <div className="flex flex-col gap-1 mb-3 text-sm text-gray-500">
+            <div className="flex justify-between">
+              <span>Subtotal</span>
+              <span>{formatPrice(currentProduct.price + BASE_FEE + DELIVERY_FEE)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>IVA (19%)</span>
+              <span>{formatPrice(vatAmount)}</span>
+            </div>
+            <div className="flex justify-between font-bold text-gray-900 pt-1 border-t border-gray-100">
+              <span>Total a pagar</span>
+              <span>{formatPrice(totalAmount)}</span>
+            </div>
           </div>
           <button
             onClick={handleContinue}

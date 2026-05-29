@@ -29,9 +29,13 @@ export class CreateTransactionUseCase {
 
       const paymentReference = `REF-${uuidv4().split('-')[0].toUpperCase()}`;
 
+      const vatAmount = Math.round(dto.productAmount * 0.19);
+      const totalAmount = dto.productAmount + dto.baseFee + dto.deliveryFee + vatAmount;
+
       const transaction = await this.transactionRepository.create({
         ...dto,
         paymentReference,
+        totalAmount,
       });
 
       return ok(TransactionResponseDto.fromEntity(transaction));

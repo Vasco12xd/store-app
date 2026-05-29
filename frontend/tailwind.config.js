@@ -17,6 +17,6 @@ export default {
         slideUp: 'slideUp 0.3s ease-out',
       },
     },
-  },
+  },    
   plugins: [],
 }

@@ -29,6 +29,7 @@ export interface CheckoutState {
   customerData: CustomerData | null;
   cardData: CardData | null;
   selectedProduct: Product | null;
+  vatAmount: number | null;
   fees: {
     productAmount: number;
     baseFee: number;
@@ -56,6 +57,7 @@ const initialState: CheckoutState = {
   cardData: null,
   selectedProduct: null,
   fees: null,
+  vatAmount: null,
   ...loadFromStorage(),
 };
 
@@ -85,13 +87,19 @@ const checkoutSlice = createSlice({
       state.selectedProduct = action.payload;
       saveToStorage(state);
     },
+    setVatAmount(state, action: PayloadAction<number>) {
+      state.vatAmount = action.payload;
+      saveToStorage(state);
+    },
     resetCheckout(state) {
       state.step = 'product';
       state.customerId = null;
       state.transactionId = null;
       state.customerData = null;
       state.cardData = null;
+      state.selectedProduct = null;
       state.fees = null;
+      state.vatAmount = null;
       localStorage.removeItem(STORAGE_KEY);
     },
   },
@@ -106,10 +114,11 @@ const saveToStorage = (state: CheckoutState) => {
       customerData: state.customerData,
       selectedProduct: state.selectedProduct,
       fees: state.fees,
+      vatAmount: state.vatAmount,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
   } catch {}
 };
 
-export const { setStep, setCustomer, setCardData, setTransaction, setSelectedProduct, resetCheckout } = checkoutSlice.actions;
+export const { setStep, setCustomer, setCardData, setTransaction, setSelectedProduct, resetCheckout, setVatAmount } = checkoutSlice.actions;
 export default checkoutSlice.reducer;

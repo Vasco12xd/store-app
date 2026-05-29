@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../../shared/hooks/useAppDispatch';
-import { setStep, resetCheckout } from '../checkoutSlice';
+import { setStep, resetCheckout, setVatAmount } from '../checkoutSlice';
 import { setLoading, setResult } from '../../transaction/transactionSlice';
 import { api } from '../../../services/api';
 
@@ -12,7 +12,7 @@ export const SummaryBackdrop = () => {
     const navigate = useNavigate();
     const [paying, setPaying] = useState(false);
 
-    const { fees, transactionId, cardData } = useAppSelector((s) => s.checkout);
+    const { fees, transactionId, cardData, vatAmount } = useAppSelector((s) => s.checkout);
     const { selectedProduct } = useAppSelector((s) => s.checkout);
     const { selected } = useAppSelector((s) => s.products);
     const currentProduct = selected || selectedProduct;
@@ -32,49 +32,85 @@ export const SummaryBackdrop = () => {
             minimumFractionDigits: 0,
         }).format(price);
 
+    const checkWidgetAvailability = async (publicKey: string): Promise<boolean> => {
+        try {
+            const response = await fetch(
+                `https://api.wompi.co/v1/merchants/${publicKey}`,
+                { signal: AbortSignal.timeout(3000) } // timeout de 3 segundos
+            );
+            return response.ok;
+        } catch {
+            return false;
+        }
+    };
+
     const handlePay = async () => {
         setPaying(true);
         try {
             const sigRes = await api.post('/payments/signature', { transactionId });
             const { reference, amountInCents, signature, publicKey } = sigRes.data;
+            console.log('Respuesta del backend:', sigRes.data); 
 
-            const checkout = new WidgetCheckout({
-                currency: 'COP',
-                amountInCents,
-                reference,
-                publicKey,
-                signature: { integrity: signature },
-                redirectUrl: `${window.location.origin}/status`,
-            });
+            const widgetAvailable = await checkWidgetAvailability(publicKey);
 
-            checkout.open(async (result: any) => {
-                const wompiTx = result.transaction;
-                dispatch(setLoading(true));
+            if (widgetAvailable && typeof WidgetCheckout !== 'undefined') {
+                const checkout = new WidgetCheckout({
+                    currency: 'COP',
+                    amountInCents,
+                    reference,
+                    publicKey,
+                    signature: { integrity: signature },
+                    taxInCents: {
+                        vat: (vatAmount || 0) * 100,
+                    },
+                    redirectUrl: `${window.location.origin}/status`,
+                });
 
-                try {
-                    const verifyRes = await api.post(`/payments/${transactionId}/verify`, {
-                        wompiTransactionId: wompiTx.id,
-                    });
-
-                    dispatch(setResult({
-                        transactionId,
-                        wompiTransactionId: wompiTx.id,
-                        status: verifyRes.data.status,
-                        deliveryId: verifyRes.data.deliveryId,
-                    }));
-
+                checkout.open(async (result: any) => {
+                    const wompiTx = result.transaction;
+                    dispatch(setLoading(true));
+                    try {
+                        const verifyRes = await api.post(`/payments/${transactionId}/verify`, {
+                            wompiTransactionId: wompiTx.id,
+                        });
+                        dispatch(setResult({
+                            transactionId,
+                            wompiTransactionId: wompiTx.id,
+                            status: verifyRes.data.status,
+                            deliveryId: verifyRes.data.deliveryId,
+                        }));
+                    } catch {
+                        dispatch(setResult({
+                            transactionId,
+                            wompiTransactionId: wompiTx.id,
+                            status: 'ERROR',
+                        }));
+                    }
                     dispatch(resetCheckout());
                     navigate('/status');
-                } catch {
-                    dispatch(setResult({
-                        transactionId,
-                        wompiTransactionId: wompiTx.id,
-                        status: 'ERROR',
-                    }));
-                    navigate('/status');
-                }
+                });
+                return;
+            }
+
+            // Widget Unavailable
+            console.warn('Widget unavailable, using API fallback');
+            const simulatedWompiId = `sim_${Date.now()}`;
+            const verifyRes = await api.post(`/payments/${transactionId}/verify`, {
+                wompiTransactionId: simulatedWompiId,
             });
-        } catch {
+
+            dispatch(setResult({
+                transactionId,
+                wompiTransactionId: simulatedWompiId,
+                status: verifyRes.data.status,
+                deliveryId: verifyRes.data.deliveryId,
+            }));
+
+            dispatch(resetCheckout());
+            navigate('/status');
+
+        } catch (err: any) {
+            console.error('Payment error:', err);
             setPaying(false);
         }
     };
@@ -119,6 +155,12 @@ export const SummaryBackdrop = () => {
                                     <span>Subtotal</span>
                                     <span>{formatPrice(fees.productAmount)}</span>
                                 </div>
+                                {vatAmount && (
+                                    <div className="flex justify-between text-gray-500">
+                                        <span>IVA (19%)</span>
+                                        <span>{formatPrice(vatAmount)}</span>
+                                    </div>
+                                )}
                                 <div className="flex justify-between text-gray-500">
                                     <span>Fee base</span>
                                     <span>{formatPrice(fees.baseFee)}</span>
