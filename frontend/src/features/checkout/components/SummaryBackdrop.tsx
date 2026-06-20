@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../../shared/hooks/useAppDispatch';
-import { setStep, resetCheckout, setVatAmount } from '../checkoutSlice';
+import { setStep, resetCheckout } from '../checkoutSlice';
 import { setLoading, setResult } from '../../transaction/transactionSlice';
 import { api } from '../../../services/api';
 
@@ -12,7 +12,7 @@ export const SummaryBackdrop = () => {
     const navigate = useNavigate();
     const [paying, setPaying] = useState(false);
 
-    const { fees, transactionId, cardData, vatAmount } = useAppSelector((s) => s.checkout);
+    const { fees, transactionId, cardData } = useAppSelector((s) => s.checkout);
     const { selectedProduct } = useAppSelector((s) => s.checkout);
     const { selected } = useAppSelector((s) => s.products);
     const currentProduct = selected || selectedProduct;
@@ -59,10 +59,7 @@ export const SummaryBackdrop = () => {
                     amountInCents,
                     reference,
                     publicKey,
-                    signature: { integrity: signature },
-                    taxInCents: {
-                        vat: (vatAmount || 0) * 100,
-                    },
+                    signature: { integrity: signature },    
                     redirectUrl: `${window.location.origin}/status`,
                 });
 
@@ -154,13 +151,7 @@ export const SummaryBackdrop = () => {
                                 <div className="flex justify-between text-gray-500">
                                     <span>Subtotal</span>
                                     <span>{formatPrice(fees.productAmount)}</span>
-                                </div>
-                                {vatAmount && (
-                                    <div className="flex justify-between text-gray-500">
-                                        <span>IVA (19%)</span>
-                                        <span>{formatPrice(vatAmount)}</span>
-                                    </div>
-                                )}
+                                </div>                                
                                 <div className="flex justify-between text-gray-500">
                                     <span>Fee base</span>
                                     <span>{formatPrice(fees.baseFee)}</span>
